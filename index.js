@@ -21,7 +21,7 @@ app.use(async (req, res, next) => {
 });
 
 app.get("/", (req, res) => res.json({ ok: true, name: "StudioSpace API" }));
-
+app.use("/auth", require("./routes/auth"));
 // ROUTES_HERE
 
 if (!process.env.VERCEL) {
