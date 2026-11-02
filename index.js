@@ -23,7 +23,8 @@ app.use(async (req, res, next) => {
 app.get("/", (req, res) => res.json({ ok: true, name: "StudioSpace API" }));
 app.use("/auth", require("./routes/auth"));
 app.use("/studios", require("./routes/studios"));
-// ROUTES_HERE
+app.use("/bookings", require("./routes/bookings"));
+
 
 if (!process.env.VERCEL) {
   app.listen(process.env.PORT || 5000, () =>

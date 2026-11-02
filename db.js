@@ -1,13 +1,19 @@
 const { MongoClient } = require("mongodb");
 
-let db;
+let dbPromise;
 
-async function getDb() {
-  if (db) return db;
-  const client = new MongoClient(process.env.MONGODB_URI);
-  await client.connect();
-  db = client.db("studiospace");
-  return db;
+function getDb() {
+  if (!dbPromise) {
+    const client = new MongoClient(process.env.MONGODB_URI);
+    dbPromise = client
+      .connect()
+      .then(() => client.db("studiospace"))
+      .catch((err) => {
+        dbPromise = null;
+        throw err;
+      });
+  }
+  return dbPromise;
 }
 
 module.exports = { getDb };
