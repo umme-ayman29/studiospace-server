@@ -1,7 +1,10 @@
 const router = require("express").Router();
 const bcrypt = require("bcryptjs");
+const { OAuth2Client } = require("google-auth-library");
 const { getDb } = require("../db");
 const { verifyToken, setAuthCookie, clearAuthCookie } = require("../middleware/auth");
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z]).{6,}$/;
 const publicUser = (u) => ({ name: u.name, email: u.email, photoURL: u.photoURL || "" });
@@ -46,6 +49,40 @@ router.post("/login", async (req, res) => {
 
   setAuthCookie(res, user);
   res.json({ user: publicUser(user) });
+});
+
+router.post("/google", async (req, res) => {
+  const { credential } = req.body;
+  if (!credential) {
+    return res.status(400).json({ message: "Google credential is required" });
+  }
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const p = ticket.getPayload();
+    if (!p.email || !p.email_verified) {
+      return res.status(401).json({ message: "Google email is not verified" });
+    }
+    const email = p.email.toLowerCase();
+    const users = (await getDb()).collection("users");
+    let user = await users.findOne({ email });
+    if (!user) {
+      user = {
+        name: p.name || email.split("@")[0],
+        email,
+        photoURL: p.picture || "",
+        provider: "google",
+        createdAt: new Date(),
+      };
+      await users.insertOne(user);
+    }
+    setAuthCookie(res, user);
+    res.json({ user: publicUser(user) });
+  } catch (err) {
+    res.status(401).json({ message: "Google sign-in failed" });
+  }
 });
 
 router.get("/me", verifyToken, async (req, res) => {
